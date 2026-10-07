@@ -20,8 +20,13 @@ import random
 import sys
 from array import array
 
+# pyrefly: ignore [missing-import]
 import pygame
 
+multiplayer
+
+from modes.reverse import reverse_direction
+main
 
 # ----------------------------- Settings ------------------------------------
 
@@ -46,6 +51,19 @@ SAVE_FILE = os.path.join(
 
 # ----------------------------- Difficulty -----------------------------------
 
+multiplayer
+#Poison feature settings
+POISON_EVERY = 3
+POISON_DURATION_MS = 8000
+POISON_PENALTY = 2
+POISON_SHRINK = 2
+MIN_SNAKE_LENGTH = 3
+MAX_POISON_ON_SCREEN = 2
+POISON_COLOUR = (170, 70, 220) #Purple
+SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "highscores.json")
+
+# Difficulty: starting speed and how much speed rises per level
+main
 DIFFICULTIES = {
     "Easy": {"base_fps": 6, "step": 1},
     "Medium": {"base_fps": 8, "step": 2},
@@ -54,9 +72,15 @@ DIFFICULTIES = {
 
 DIFFICULTY_NAMES = list(DIFFICULTIES.keys())
 
+multiplayer
 
 # ----------------------------- Colour Themes --------------------------------
 
+
+GAME_MODES = ["Classic", "Reverse"]
+
+# Colour themes
+main
 THEMES = {
     "Classic": {
         "bg": (15, 15, 20),
@@ -463,6 +487,35 @@ class Food:
                 rect.inflate(-4, -4)
             )
 
+class PoisonFood:
+    """Poison item: purple, flickers, disappears after a few seconds.
+    Eating it shrinks the snake and costs points."""
+ 
+    def __init__(self, snake_body, avoid_positions):
+        self.spawn_time = pygame.time.get_ticks()
+        blocked = set(snake_body) | set(avoid_positions)
+        # Also keep poison away from the cells right in front of the head,
+        # so the player gets a fair chance to react.
+        hx, hy = snake_body[0]
+        free = [(x, y) for x in range(COLS) for y in range(ROWS)
+                if (x, y) not in blocked and abs(x - hx) + abs(y - hy) > 3]
+        self.pos = random.choice(free)
+ 
+    def expired(self):
+        return pygame.time.get_ticks() - self.spawn_time > POISON_DURATION_MS
+ 
+    def draw(self, surface):
+        age = pygame.time.get_ticks() - self.spawn_time
+        # Flicker faster in the last 2 seconds as a warning that it will vanish
+        if age > POISON_DURATION_MS - 2000 and (age // 150) % 2 == 0:
+            return
+        x, y = self.pos
+        rect = pygame.Rect(x * CELL, y * CELL + HUD_HEIGHT, CELL, CELL)
+        pygame.draw.ellipse(surface, POISON_COLOUR, rect.inflate(-4, -4))
+        # A small "X" in the middle so it is easy to tell apart from normal food
+        c = rect.center
+        pygame.draw.line(surface, (255, 255, 255), (c[0] - 3, c[1] - 3), (c[0] + 3, c[1] + 3), 2)
+        pygame.draw.line(surface, (255, 255, 255), (c[0] - 3, c[1] + 3), (c[0] + 3, c[1] - 3), 2)
 
 class Popup:
     """Floating score text."""
@@ -520,6 +573,7 @@ class Popup:
 # ----------------------------- Main Game Class ------------------------------
 
 class Game:
+multiplayer
 
     MENU_ITEMS = [
         "Play",
@@ -529,6 +583,9 @@ class Game:
         "Sound",
         "Quit",
     ]
+
+    MENU_ITEMS = ["Play", "Mode", "Difficulty", "Theme", "Sound", "Quit"]
+main
 
     def __init__(self):
 
@@ -550,6 +607,7 @@ class Game:
         )
 
         self.clock = pygame.time.Clock()
+multiplayer
 
         self.font = pygame.font.SysFont(
             "consolas",
@@ -573,6 +631,13 @@ class Game:
             bold=True
         )
 
+
+        self.font = pygame.font.SysFont("consolas", 22)
+        self.small_font = pygame.font.SysFont("consolas", 16)
+        self.big_font = pygame.font.SysFont("consolas", 52, bold=True)
+        self.title_font = pygame.font.SysFont("consolas", 80, bold=True)
+        self.mode_index = 0
+main
         self.sounds = self._load_sounds()
 
         # Settings
@@ -589,7 +654,10 @@ class Game:
         self.state = "menu"
 
         self.menu_index = 0
+multiplayer
 
+   
+main
         self.reset()
 
     # ------------------------- Settings -------------------------
@@ -600,6 +668,10 @@ class Game:
         return DIFFICULTY_NAMES[
             self.difficulty_index
         ]
+
+    @property
+    def game_mode(self):
+        return GAME_MODES[self.mode_index]
 
     @property
     def theme(self):
@@ -624,6 +696,7 @@ class Game:
         try:
 
             return {
+multiplayer
                 "move": make_tone(
                     500,
                     500,
@@ -655,6 +728,13 @@ class Game:
                     600,
                     0.45
                 ),
+                "move": make_tone(500, 500, 40, 0.2),
+                "select": make_tone(700, 900, 90),
+                "eat": make_tone(600, 1000, 110),
+                "bonus": make_tone(800, 1600, 260),
+                "gameover": make_tone(400, 90, 600, 0.45),
+                "poison": make_tone(350, 110, 320, 0.4),
+main
             }
 
         except pygame.error:
@@ -673,6 +753,7 @@ class Game:
     # ------------------------- Game Setup -----------------------
 
     def reset(self):
+multiplayer
 
         start_positions = [
             (5, 5),
@@ -724,6 +805,13 @@ class Game:
             self.snakes
         )
 
+
+        """Start (or restart) a fresh game with the current settings."""
+        self.snake = Snake()
+        self.poison_foods = []
+        self.flash_until = 0 
+        self.food = Food(self.snake.body)
+main
         self.bonus_food = None
 
         self.popups = []
@@ -737,6 +825,7 @@ class Game:
         self.paused = False
 
         self.new_best = False
+        self.reverse_controls = False
 
     def start_game(self):
 
@@ -859,6 +948,7 @@ class Game:
                 self.change_setting(1)
 
     def change_setting(self, step):
+multiplayer
 
         item = self.MENU_ITEMS[
             self.menu_index
@@ -887,6 +977,14 @@ class Game:
                 DIFFICULTY_NAMES
             )
 
+
+        """Change the highlighted menu setting (difficulty, theme or sound)."""
+        item = self.MENU_ITEMS[self.menu_index]
+        if item == "Difficulty":
+            self.difficulty_index = (self.difficulty_index + step) % len(DIFFICULTY_NAMES)
+        elif item == "Mode":
+            self.mode_index = (self.mode_index + step) % len(GAME_MODES)
+main
         elif item == "Theme":
 
             self.theme_index = (
@@ -909,6 +1007,7 @@ class Game:
     # ------------------------- Player Controls -----------------
 
     def handle_play_key(self, key):
+multiplayer
 
         player_controls = [
 
@@ -929,6 +1028,8 @@ class Game:
             },
         ]
 
+
+main
         if key == pygame.K_ESCAPE:
 
             self.state = "menu"
@@ -936,6 +1037,7 @@ class Game:
         elif key == pygame.K_p:
 
             self.paused = not self.paused
+multiplayer
 
         elif not self.paused:
 
@@ -960,6 +1062,12 @@ class Game:
                     break
 
     # ------------------------- Game Over -----------------------
+
+        elif not self.paused:
+            direction = reverse_direction(key, self.reverse_controls)
+            if direction is not None:
+                self.snake.set_direction(direction)
+main
 
     def handle_gameover_key(self, key):
 
@@ -1075,6 +1183,7 @@ class Game:
 
             return
 
+multiplayer
         # One player remains
         if (
             self.player_count == 2
@@ -1152,7 +1261,41 @@ class Game:
             and self.bonus_food.expired()
         ):
 
+
+        # Eating normal food
+        if self.snake.head == self.food.pos:
+            self.eat(self.food)
+
+            if self.game_mode == "Reverse":
+                self.reverse_controls = not self.reverse_controls
+
+            self.foods_eaten += 1
+            self.level = 1 + self.foods_eaten // FOODS_PER_LEVEL
+            self.food = self.spawn_food(other=self.bonus_food)
+            if self.foods_eaten % BONUS_EVERY == 0 and self.bonus_food is None:
+                self.bonus_food = self.spawn_food(bonus=True, other=self.food)
+            if (self.foods_eaten % POISON_EVERY == 0
+                    and len(self.poison_foods) < MAX_POISON_ON_SCREEN):
+                self.spawn_poison()
+
+        # Eating bonus food
+        if self.bonus_food and self.snake.head == self.bonus_food.pos:
+            self.eat(self.bonus_food)
             self.bonus_food = None
+
+        #Eating poison
+        for poison in list(self.poison_foods):
+            if self.snake.head == poison.pos:
+                self.poison_foods.remove(poison)
+                self.eat_poison(poison)
+                if self.state == "gameover":
+                    return
+
+        # Bonus food and poison timeouts
+        if self.bonus_food and self.bonus_food.expired():
+main
+            self.bonus_food = None
+        self.poison_foods = [p for p in self.poison_foods if not p.expired()]
 
         # Remove old popups
         self.popups = [
@@ -1171,6 +1314,48 @@ class Game:
 
         snake.grow(1)
 
+multiplayer
+
+    #Poison Feature
+    def poison_positions(self):
+        return [p.pos for p in self.poison_foods]
+ 
+    def spawn_food(self, bonus=False, other=None):
+        """Create food that never lands on a poison item."""
+        food = Food(self.snake.body, bonus=bonus, other=other)
+        for _ in range(50):
+            if food.pos not in self.poison_positions():
+                break
+            food = Food(self.snake.body, bonus=bonus, other=other)
+        return food
+ 
+    def spawn_poison(self):
+        """Create a poison item away from the snake, food and other poison."""
+        avoid = self.poison_positions() + [self.food.pos]
+        if self.bonus_food:
+            avoid.append(self.bonus_food.pos)
+        self.poison_foods.append(PoisonFood(self.snake.body, avoid))
+ 
+    def eat_poison(self, poison):
+        """Penalty: lose points and tail segments. Too short -> game over."""
+        x, y = poison.pos
+        self.popups.append(Popup(f"-{POISON_PENALTY}", x * CELL + CELL // 2,
+                                 y * CELL + HUD_HEIGHT, POISON_COLOUR))
+        self.play("poison")
+        self.flash_until = pygame.time.get_ticks() + 250
+ 
+        if len(self.snake.body) - POISON_SHRINK < MIN_SNAKE_LENGTH:
+            self.end_game()                  # the snake is too short to survive
+            return
+        self.score = max(0, self.score - POISON_PENALTY)
+        for _ in range(POISON_SHRINK):
+            self.snake.body.pop()            # remove tail segments
+        self.snake.grow_pending = 0
+
+    def eat(self, food):
+        self.score += food.points
+        self.snake.grow(1)
+main
         x, y = food.pos
 
         px = (
@@ -1363,6 +1548,7 @@ class Game:
         )
 
         if self.bonus_food:
+multiplayer
 
             self.bonus_food.draw(
                 self.screen,
@@ -1379,6 +1565,20 @@ class Game:
 
         # Popups
         for p in self.popups:
+
+            self.bonus_food.draw(self.screen, t)
+        for poison in self.poison_foods:
+            poison.draw(self.screen)
+        self.snake.draw(self.screen, t)
+        for p in self.popups:
+            p.draw(self.screen, self.small_font)
+ 
+        # Brief purple flash when poison is eaten
+        if pygame.time.get_ticks() < self.flash_until:
+            flash = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            flash.fill((*POISON_COLOUR, 70))
+            self.screen.blit(flash, (0, 0))
+main
 
             p.draw(
                 self.screen,
@@ -1545,6 +1745,7 @@ class Game:
         )
 
         values = {
+multiplayer
             "Players": (
                 f"< {self.player_count} >"
             ),
@@ -1560,6 +1761,12 @@ class Game:
             "Sound": (
                 f"< {'On' if self.sound_on else 'Off'} >"
             ),
+
+            "Mode": f"< {self.game_mode} >",
+            "Difficulty": f"< {self.difficulty} >",
+            "Theme": f"< {THEME_NAMES[self.theme_index]} >",
+            "Sound": f"< {'On' if self.sound_on else 'Off'} >",
+main
         }
 
         for i, item in enumerate(
