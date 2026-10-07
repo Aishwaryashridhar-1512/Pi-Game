@@ -1,21 +1,16 @@
 """
-Snake Game - Classic Arcade Clone (Python + Pygame)  --  Version 2 (upgraded interface)
+Snake Game - Classic Arcade Clone
+Python + Pygame
 
-New in this version:
-  - Start menu (Play / Difficulty / Theme / Sound / Quit)
-  - Three difficulty levels (Easy, Medium, Hard) with separate high scores
-  - Four colour themes
-  - Sound effects (generated in code, so no audio files are needed)
-  - Better visuals: gradient body, eyes on the head, floating "+score" pop-ups
-
-Controls:
-  Menu    : UP/DOWN select, LEFT/RIGHT change a setting, ENTER choose, ESC quit
-  In game : Arrow keys / WASD move, P pause, ESC back to menu
-  Game over: R restart, M menu, Q quit
-
-Run:
-  pip install pygame
-  python snake_v2.py
+Features:
+- 1 or 2 player mode
+- Difficulty selection
+- Theme selection
+- Sound effects
+- Individual player scores
+- Multiplayer snake collisions
+- Bonus food
+- High scores for single-player mode
 """
 
 import json
@@ -28,21 +23,35 @@ from array import array
 # pyrefly: ignore [missing-import]
 import pygame
 
+multiplayer
+
 from modes.reverse import reverse_direction
+main
 
 # ----------------------------- Settings ------------------------------------
-CELL = 20                      # size of one grid cell in pixels
-COLS, ROWS = 30, 22            # grid size
-HUD_HEIGHT = 40                # top bar for score text
+
+CELL = 20
+COLS, ROWS = 30, 22
+HUD_HEIGHT = 40
+
 WIDTH = COLS * CELL
 HEIGHT = ROWS * CELL + HUD_HEIGHT
 
-FOODS_PER_LEVEL = 4            # level up after this many foods
-BONUS_EVERY = 5                # a bonus food appears after every N normal foods
-BONUS_DURATION_MS = 5000       # bonus food lifetime
-MAX_FPS = 28                   # speed cap for every difficulty
-SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "highscores.json")
+FOODS_PER_LEVEL = 4
+BONUS_EVERY = 5
+BONUS_DURATION_MS = 5000
 
+MAX_FPS = 28
+
+SAVE_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "highscores.json"
+)
+
+
+# ----------------------------- Difficulty -----------------------------------
+
+multiplayer
 #Poison feature settings
 POISON_EVERY = 3
 POISON_DURATION_MS = 8000
@@ -54,55 +63,120 @@ POISON_COLOUR = (170, 70, 220) #Purple
 SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "highscores.json")
 
 # Difficulty: starting speed and how much speed rises per level
+main
 DIFFICULTIES = {
-    "Easy":   {"base_fps": 6,  "step": 1},
-    "Medium": {"base_fps": 8,  "step": 2},
-    "Hard":   {"base_fps": 11, "step": 2},
+    "Easy": {"base_fps": 6, "step": 1},
+    "Medium": {"base_fps": 8, "step": 2},
+    "Hard": {"base_fps": 11, "step": 2},
 }
+
 DIFFICULTY_NAMES = list(DIFFICULTIES.keys())
+
+multiplayer
+
+# ----------------------------- Colour Themes --------------------------------
+
 
 GAME_MODES = ["Classic", "Reverse"]
 
 # Colour themes
+main
 THEMES = {
-    "Classic": {"bg": (15, 15, 20), "grid": (28, 28, 36), "hud": (25, 25, 35),
-                "head": (90, 230, 120), "tail": (25, 110, 55), "food": (230, 60, 60),
-                "bonus": (250, 200, 40), "text": (240, 240, 240), "accent": (250, 200, 40),
-                "muted": (150, 150, 160)},
-    "Neon":    {"bg": (10, 5, 25), "grid": (25, 15, 50), "hud": (20, 10, 40),
-                "head": (0, 255, 230), "tail": (120, 40, 200), "food": (255, 60, 180),
-                "bonus": (255, 240, 60), "text": (235, 235, 255), "accent": (255, 60, 180),
-                "muted": (140, 130, 190)},
-    "Retro":   {"bg": (8, 22, 8), "grid": (14, 36, 14), "hud": (10, 30, 10),
-                "head": (150, 255, 120), "tail": (40, 120, 40), "food": (220, 255, 120),
-                "bonus": (255, 255, 255), "text": (170, 255, 150), "accent": (220, 255, 120),
-                "muted": (90, 160, 90)},
-    "Sunset":  {"bg": (30, 15, 30), "grid": (45, 25, 45), "hud": (40, 20, 40),
-                "head": (255, 190, 90), "tail": (200, 60, 90), "food": (120, 230, 255),
-                "bonus": (255, 255, 140), "text": (255, 235, 220), "accent": (255, 150, 80),
-                "muted": (190, 140, 150)},
+    "Classic": {
+        "bg": (15, 15, 20),
+        "grid": (28, 28, 36),
+        "hud": (25, 25, 35),
+        "head": (90, 230, 120),
+        "tail": (25, 110, 55),
+        "food": (230, 60, 60),
+        "bonus": (250, 200, 40),
+        "text": (240, 240, 240),
+        "accent": (250, 200, 40),
+        "muted": (150, 150, 160),
+    },
+
+    "Neon": {
+        "bg": (10, 5, 25),
+        "grid": (25, 15, 50),
+        "hud": (20, 10, 40),
+        "head": (0, 255, 230),
+        "tail": (120, 40, 200),
+        "food": (255, 60, 180),
+        "bonus": (255, 240, 60),
+        "text": (235, 235, 255),
+        "accent": (255, 60, 180),
+        "muted": (140, 130, 190),
+    },
+
+    "Retro": {
+        "bg": (8, 22, 8),
+        "grid": (14, 36, 14),
+        "hud": (10, 30, 10),
+        "head": (150, 255, 120),
+        "tail": (40, 120, 40),
+        "food": (220, 255, 120),
+        "bonus": (255, 255, 255),
+        "text": (170, 255, 150),
+        "accent": (220, 255, 120),
+        "muted": (90, 160, 90),
+    },
+
+    "Sunset": {
+        "bg": (30, 15, 30),
+        "grid": (45, 25, 45),
+        "hud": (40, 20, 40),
+        "head": (255, 190, 90),
+        "tail": (200, 60, 90),
+        "food": (120, 230, 255),
+        "bonus": (255, 255, 140),
+        "text": (255, 235, 220),
+        "accent": (255, 150, 80),
+        "muted": (190, 140, 150),
+    },
 }
+
 THEME_NAMES = list(THEMES.keys())
 
-UP, DOWN, LEFT, RIGHT = (0, -1), (0, 1), (-1, 0), (1, 0)
+
+# ----------------------------- Directions -----------------------------------
+
+UP = (0, -1)
+DOWN = (0, 1)
+LEFT = (-1, 0)
+RIGHT = (1, 0)
 
 
-# ----------------------------- Helpers -------------------------------------
+# ----------------------------- Helpers --------------------------------------
+
 def lerp_colour(c1, c2, t):
-    """Blend two RGB colours; t=0 gives c1, t=1 gives c2."""
-    return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+    """Blend two RGB colours."""
+
+    return tuple(
+        int(c1[i] + (c2[i] - c1[i]) * t)
+        for i in range(3)
+    )
 
 
 def load_high_scores():
-    """Read per-difficulty high scores from disk (default 0)."""
-    scores = {name: 0 for name in DIFFICULTY_NAMES}
+    """Read per-difficulty high scores from disk."""
+
+    scores = {
+        name: 0
+        for name in DIFFICULTY_NAMES
+    }
+
     try:
         with open(SAVE_FILE, "r") as f:
             data = json.load(f)
+
         for name in DIFFICULTY_NAMES:
-            scores[name] = int(data.get(name, 0))
+            scores[name] = int(
+                data.get(name, 0)
+            )
+
     except (OSError, ValueError, TypeError):
         pass
+
     return scores
 
 
@@ -110,34 +184,71 @@ def save_high_scores(scores):
     try:
         with open(SAVE_FILE, "w") as f:
             json.dump(scores, f)
+
     except OSError:
-        pass  # not critical if saving fails
+        pass
 
 
 def make_tone(freq_start, freq_end, ms, volume=0.35):
-    """Build a short beep (optionally sliding in pitch) as a pygame Sound."""
+    """Build a short beep as a pygame Sound."""
+
     sample_rate = 22050
     n = int(sample_rate * ms / 1000)
+
     buf = array("h")
     phase = 0.0
+
     for i in range(n):
+
         t = i / n
-        freq = freq_start + (freq_end - freq_start) * t
-        phase += 2 * math.pi * freq / sample_rate
-        envelope = 1.0 - t                       # fade out to avoid clicks
-        buf.append(int(32767 * volume * envelope * math.sin(phase)))
-    return pygame.mixer.Sound(buffer=buf.tobytes())
+
+        freq = (
+            freq_start
+            + (freq_end - freq_start) * t
+        )
+
+        phase += (
+            2 * math.pi * freq / sample_rate
+        )
+
+        envelope = 1.0 - t
+
+        buf.append(
+            int(
+                32767
+                * volume
+                * envelope
+                * math.sin(phase)
+            )
+        )
+
+    return pygame.mixer.Sound(
+        buffer=buf.tobytes()
+    )
 
 
-# ----------------------------- Game objects --------------------------------
+# ----------------------------- Game Objects ---------------------------------
+
 class Snake:
     """The snake: a list of grid cells, head first."""
 
-    def __init__(self):
-        start_x, start_y = COLS // 2, ROWS // 2
-        self.body = [(start_x, start_y), (start_x - 1, start_y), (start_x - 2, start_y)]
-        self.direction = RIGHT
-        self.next_direction = RIGHT
+    def __init__(self, start_pos, direction=RIGHT):
+
+        self.player_id = None
+        self.color = None
+
+        start_x, start_y = start_pos
+
+        dx, dy = direction
+
+        self.body = [
+            (start_x, start_y),
+            (start_x - dx, start_y - dy),
+            (start_x - 2 * dx, start_y - 2 * dy),
+        ]
+
+        self.direction = direction
+        self.next_direction = direction
         self.grow_pending = 0
 
     @property
@@ -145,83 +256,236 @@ class Snake:
         return self.body[0]
 
     def set_direction(self, new_dir):
-        """Change direction, but never allow a 180-degree reverse."""
-        opposite = (-self.direction[0], -self.direction[1])
+        """Never allow a 180-degree reverse."""
+
+        opposite = (
+            -self.direction[0],
+            -self.direction[1]
+        )
+
         if new_dir != opposite:
             self.next_direction = new_dir
 
     def move(self):
-        """Advance one cell in the current direction."""
+        """Advance one cell."""
+
         self.direction = self.next_direction
-        new_head = (self.head[0] + self.direction[0], self.head[1] + self.direction[1])
-        self.body.insert(0, new_head)
+
+        new_head = (
+            self.head[0] + self.direction[0],
+            self.head[1] + self.direction[1]
+        )
+
+        self.body.insert(
+            0,
+            new_head
+        )
+
         if self.grow_pending > 0:
-            self.grow_pending -= 1          # keep tail -> snake grows
+            self.grow_pending -= 1
         else:
-            self.body.pop()                 # remove tail -> same length
+            self.body.pop()
 
     def grow(self, amount=1):
         self.grow_pending += amount
 
     def hit_wall(self):
         x, y = self.head
-        return x < 0 or x >= COLS or y < 0 or y >= ROWS
+
+        return (
+            x < 0
+            or x >= COLS
+            or y < 0
+            or y >= ROWS
+        )
 
     def hit_self(self):
         return self.head in self.body[1:]
 
     def draw(self, surface, theme):
+
         total = len(self.body)
+
         for i, (x, y) in enumerate(self.body):
-            rect = pygame.Rect(x * CELL, y * CELL + HUD_HEIGHT, CELL, CELL)
-            colour = lerp_colour(theme["head"], theme["tail"], i / max(total - 1, 1))
-            pygame.draw.rect(surface, colour, rect.inflate(-2, -2), border_radius=6)
+
+            rect = pygame.Rect(
+                x * CELL,
+                y * CELL + HUD_HEIGHT,
+                CELL,
+                CELL
+            )
+
+            # Player-specific colour
+            if self.color is not None:
+
+                colour = lerp_colour(
+                    self.color,
+                    tuple(
+                        max(0, c - 70)
+                        for c in self.color
+                    ),
+                    i / max(total - 1, 1)
+                )
+
+            else:
+
+                colour = lerp_colour(
+                    theme["head"],
+                    theme["tail"],
+                    i / max(total - 1, 1)
+                )
+
+            pygame.draw.rect(
+                surface,
+                colour,
+                rect.inflate(-2, -2),
+                border_radius=6
+            )
+
         self._draw_eyes(surface)
 
     def _draw_eyes(self, surface):
-        """Draw two eyes on the head, looking in the direction of travel."""
+
         hx, hy = self.head
-        cx = hx * CELL + CELL // 2
-        cy = hy * CELL + HUD_HEIGHT + CELL // 2
+
+        cx = (
+            hx * CELL
+            + CELL // 2
+        )
+
+        cy = (
+            hy * CELL
+            + HUD_HEIGHT
+            + CELL // 2
+        )
+
         dx, dy = self.direction
-        px, py = -dy, dx                         # perpendicular direction
+
+        px, py = -dy, dx
+
         for side in (1, -1):
-            ex = cx + dx * 4 + px * 4 * side
-            ey = cy + dy * 4 + py * 4 * side
-            pygame.draw.circle(surface, (255, 255, 255), (ex, ey), 3)
-            pygame.draw.circle(surface, (0, 0, 0), (ex + dx, ey + dy), 1)
+
+            ex = (
+                cx
+                + dx * 4
+                + px * 4 * side
+            )
+
+            ey = (
+                cy
+                + dy * 4
+                + py * 4 * side
+            )
+
+            pygame.draw.circle(
+                surface,
+                (255, 255, 255),
+                (ex, ey),
+                3
+            )
+
+            pygame.draw.circle(
+                surface,
+                (0, 0, 0),
+                (ex + dx, ey + dy),
+                1
+            )
 
 
 class Food:
     """A food item placed on a random free cell."""
 
-    def __init__(self, snake_body, bonus=False, other=None):
+    def __init__(self, snakes, bonus=False, other=None):
+
         self.bonus = bonus
-        self.points = 5 if bonus else 1
-        self.spawn_time = pygame.time.get_ticks()
-        self.pos = self._random_free_cell(snake_body, other)
+
+        self.points = (
+            5 if bonus else 1
+        )
+
+        self.spawn_time = (
+            pygame.time.get_ticks()
+        )
+
+        self.pos = self._random_free_cell(
+            snakes,
+            other
+        )
 
     @staticmethod
-    def _random_free_cell(snake_body, other):
-        blocked = set(snake_body)
+    def _random_free_cell(snakes, other):
+
+        blocked = set()
+
+        for snake in snakes:
+            blocked.update(
+                snake.body
+            )
+
         if other is not None:
-            blocked.add(other.pos)
-        free = [(x, y) for x in range(COLS) for y in range(ROWS) if (x, y) not in blocked]
+            blocked.add(
+                other.pos
+            )
+
+        free = [
+            (x, y)
+            for x in range(COLS)
+            for y in range(ROWS)
+            if (x, y) not in blocked
+        ]
+
         return random.choice(free)
 
     def expired(self):
-        return self.bonus and pygame.time.get_ticks() - self.spawn_time > BONUS_DURATION_MS
+
+        return (
+            self.bonus
+            and pygame.time.get_ticks()
+            - self.spawn_time
+            > BONUS_DURATION_MS
+        )
 
     def draw(self, surface, theme):
+
         x, y = self.pos
-        rect = pygame.Rect(x * CELL, y * CELL + HUD_HEIGHT, CELL, CELL)
-        colour = theme["bonus"] if self.bonus else theme["food"]
+
+        rect = pygame.Rect(
+            x * CELL,
+            y * CELL + HUD_HEIGHT,
+            CELL,
+            CELL
+        )
+
+        colour = (
+            theme["bonus"]
+            if self.bonus
+            else theme["food"]
+        )
+
         if self.bonus:
-            # Pulsing size so the player notices the bonus food
-            pulse = int(2 * math.sin(pygame.time.get_ticks() / 120))
-            pygame.draw.ellipse(surface, colour, rect.inflate(-2 + pulse, -2 + pulse))
+
+            pulse = int(
+                2 * math.sin(
+                    pygame.time.get_ticks() / 120
+                )
+            )
+
+            pygame.draw.ellipse(
+                surface,
+                colour,
+                rect.inflate(
+                    -2 + pulse,
+                    -2 + pulse
+                )
+            )
+
         else:
-            pygame.draw.ellipse(surface, colour, rect.inflate(-4, -4))
+
+            pygame.draw.ellipse(
+                surface,
+                colour,
+                rect.inflate(-4, -4)
+            )
 
 class PoisonFood:
     """Poison item: purple, flickers, disappears after a few seconds.
@@ -254,56 +518,156 @@ class PoisonFood:
         pygame.draw.line(surface, (255, 255, 255), (c[0] - 3, c[1] + 3), (c[0] + 3, c[1] - 3), 2)
 
 class Popup:
-    """A floating '+points' text that rises and fades out."""
+    """Floating score text."""
 
     DURATION_MS = 800
 
-    def __init__(self, text, x, y, colour):
-        self.text, self.x, self.y, self.colour = text, x, y, colour
+    def __init__(
+        self,
+        text,
+        x,
+        y,
+        colour
+    ):
+
+        self.text = text
+        self.x = x
+        self.y = y
+        self.colour = colour
         self.start = pygame.time.get_ticks()
 
     def alive(self):
-        return pygame.time.get_ticks() - self.start < self.DURATION_MS
+
+        return (
+            pygame.time.get_ticks()
+            - self.start
+            < self.DURATION_MS
+        )
 
     def draw(self, surface, font):
-        t = (pygame.time.get_ticks() - self.start) / self.DURATION_MS
-        img = font.render(self.text, True, self.colour)
-        img.set_alpha(int(255 * (1 - t)))
-        surface.blit(img, (self.x - img.get_width() // 2, self.y - int(30 * t)))
+
+        t = (
+            pygame.time.get_ticks()
+            - self.start
+        ) / self.DURATION_MS
+
+        img = font.render(
+            self.text,
+            True,
+            self.colour
+        )
+
+        img.set_alpha(
+            int(255 * (1 - t))
+        )
+
+        surface.blit(
+            img,
+            (
+                self.x - img.get_width() // 2,
+                self.y - int(30 * t)
+            )
+        )
 
 
-# ----------------------------- Main game class -----------------------------
+# ----------------------------- Main Game Class ------------------------------
+
 class Game:
+multiplayer
+
+    MENU_ITEMS = [
+        "Play",
+        "Players",
+        "Difficulty",
+        "Theme",
+        "Sound",
+        "Quit",
+    ]
+
     MENU_ITEMS = ["Play", "Mode", "Difficulty", "Theme", "Sound", "Quit"]
+main
 
     def __init__(self):
-        pygame.mixer.pre_init(22050, -16, 1, 512)
+
+        pygame.mixer.pre_init(
+            22050,
+            -16,
+            1,
+            512
+        )
+
         pygame.init()
-        pygame.display.set_caption("Snake")
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+        pygame.display.set_caption(
+            "Snake"
+        )
+
+        self.screen = pygame.display.set_mode(
+            (WIDTH, HEIGHT)
+        )
+
         self.clock = pygame.time.Clock()
+multiplayer
+
+        self.font = pygame.font.SysFont(
+            "consolas",
+            22
+        )
+
+        self.small_font = pygame.font.SysFont(
+            "consolas",
+            16
+        )
+
+        self.big_font = pygame.font.SysFont(
+            "consolas",
+            52,
+            bold=True
+        )
+
+        self.title_font = pygame.font.SysFont(
+            "consolas",
+            80,
+            bold=True
+        )
+
+
         self.font = pygame.font.SysFont("consolas", 22)
         self.small_font = pygame.font.SysFont("consolas", 16)
         self.big_font = pygame.font.SysFont("consolas", 52, bold=True)
         self.title_font = pygame.font.SysFont("consolas", 80, bold=True)
         self.mode_index = 0
+main
         self.sounds = self._load_sounds()
 
-        # Settings chosen from the menu
+        # Settings
         self.difficulty_index = 1
+
+        # Only 1 or 2 players
+        self.player_count = 1
+
         self.theme_index = 0
         self.sound_on = True
 
         self.high_scores = load_high_scores()
-        self.state = "menu"           # "menu", "playing", "gameover"
+
+        self.state = "menu"
+
         self.menu_index = 0
-        
+multiplayer
+
+   
+main
         self.reset()
 
-    # ---- settings shortcuts ----
+    # ------------------------- Settings -------------------------
+
     @property
     def difficulty(self):
-        return DIFFICULTY_NAMES[self.difficulty_index]
+
+        return DIFFICULTY_NAMES[
+            self.difficulty_index
+        ]
 
     @property
     def game_mode(self):
@@ -311,139 +675,592 @@ class Game:
 
     @property
     def theme(self):
-        return THEMES[THEME_NAMES[self.theme_index]]
+
+        return THEMES[
+            THEME_NAMES[
+                self.theme_index
+            ]
+        ]
 
     @property
     def high_score(self):
-        return self.high_scores[self.difficulty]
 
-    # ---- sound ----
+        return self.high_scores[
+            self.difficulty
+        ]
+
+    # ------------------------- Sound ----------------------------
+
     def _load_sounds(self):
-        """Create all sound effects in code. Returns {} if audio is unavailable."""
+
         try:
+
             return {
+multiplayer
+                "move": make_tone(
+                    500,
+                    500,
+                    40,
+                    0.2
+                ),
+
+                "select": make_tone(
+                    700,
+                    900,
+                    90
+                ),
+
+                "eat": make_tone(
+                    600,
+                    1000,
+                    110
+                ),
+
+                "bonus": make_tone(
+                    800,
+                    1600,
+                    260
+                ),
+
+                "gameover": make_tone(
+                    400,
+                    90,
+                    600,
+                    0.45
+                ),
                 "move": make_tone(500, 500, 40, 0.2),
                 "select": make_tone(700, 900, 90),
                 "eat": make_tone(600, 1000, 110),
                 "bonus": make_tone(800, 1600, 260),
                 "gameover": make_tone(400, 90, 600, 0.45),
                 "poison": make_tone(350, 110, 320, 0.4),
+main
             }
+
         except pygame.error:
+
             return {}
 
     def play(self, name):
-        if self.sound_on and name in self.sounds:
+
+        if (
+            self.sound_on
+            and name in self.sounds
+        ):
+
             self.sounds[name].play()
 
-    # ---- game setup ----
+    # ------------------------- Game Setup -----------------------
+
     def reset(self):
+multiplayer
+
+        start_positions = [
+            (5, 5),
+            (COLS - 6, 5),
+        ]
+
+        directions = [
+            RIGHT,
+            LEFT,
+        ]
+
+        self.scores = [
+            0
+        ] * self.player_count
+
+        self.winner = None
+
+        self.snakes = []
+
+        # Player 1 = Green
+        # Player 2 = Blue
+        player_colors = [
+            (50, 220, 120),
+            (80, 160, 255),
+        ]
+
+        for i in range(
+            self.player_count
+        ):
+
+            snake = Snake(
+                start_positions[i],
+                directions[i]
+            )
+
+            snake.player_id = i
+
+            snake.color = (
+                player_colors[i]
+                if self.player_count == 2
+                else None
+            )
+
+            self.snakes.append(
+                snake
+            )
+
+        self.food = Food(
+            self.snakes
+        )
+
+
         """Start (or restart) a fresh game with the current settings."""
         self.snake = Snake()
         self.poison_foods = []
         self.flash_until = 0 
         self.food = Food(self.snake.body)
+main
         self.bonus_food = None
+
         self.popups = []
+
         self.score = 0
+
         self.foods_eaten = 0
+
         self.level = 1
+
         self.paused = False
+
         self.new_best = False
         self.reverse_controls = False
 
     def start_game(self):
+
         self.reset()
+
         self.state = "playing"
 
-    # ---- difficulty ----
+    # ------------------------- Difficulty -----------------------
+
     @property
     def fps(self):
-        """Speed grows with level; how fast depends on the chosen difficulty."""
-        cfg = DIFFICULTIES[self.difficulty]
-        return min(cfg["base_fps"] + (self.level - 1) * cfg["step"], MAX_FPS)
 
-    # ---- input ----
+        cfg = DIFFICULTIES[
+            self.difficulty
+        ]
+
+        return min(
+            cfg["base_fps"]
+            + (self.level - 1)
+            * cfg["step"],
+            MAX_FPS
+        )
+
+    # ------------------------- Events ---------------------------
+
     def handle_events(self):
+
         for event in pygame.event.get():
+
             if event.type == pygame.QUIT:
+
                 self.quit()
+
             if event.type != pygame.KEYDOWN:
                 continue
+
             if self.state == "menu":
-                self.handle_menu_key(event.key)
+
+                self.handle_menu_key(
+                    event.key
+                )
+
             elif self.state == "playing":
-                self.handle_play_key(event.key)
+
+                self.handle_play_key(
+                    event.key
+                )
+
             else:
-                self.handle_gameover_key(event.key)
+
+                self.handle_gameover_key(
+                    event.key
+                )
+
+    # ------------------------- Menu -----------------------------
 
     def handle_menu_key(self, key):
+
         if key == pygame.K_ESCAPE:
+
             self.quit()
-        elif key in (pygame.K_UP, pygame.K_w):
-            self.menu_index = (self.menu_index - 1) % len(self.MENU_ITEMS)
+
+        elif key in (
+            pygame.K_UP,
+            pygame.K_w
+        ):
+
+            self.menu_index = (
+                self.menu_index - 1
+            ) % len(self.MENU_ITEMS)
+
             self.play("move")
-        elif key in (pygame.K_DOWN, pygame.K_s):
-            self.menu_index = (self.menu_index + 1) % len(self.MENU_ITEMS)
+
+        elif key in (
+            pygame.K_DOWN,
+            pygame.K_s
+        ):
+
+            self.menu_index = (
+                self.menu_index + 1
+            ) % len(self.MENU_ITEMS)
+
             self.play("move")
-        elif key in (pygame.K_LEFT, pygame.K_a):
+
+        elif key in (
+            pygame.K_LEFT,
+            pygame.K_a
+        ):
+
             self.change_setting(-1)
-        elif key in (pygame.K_RIGHT, pygame.K_d):
+
+        elif key in (
+            pygame.K_RIGHT,
+            pygame.K_d
+        ):
+
             self.change_setting(1)
-        elif key in (pygame.K_RETURN, pygame.K_SPACE):
-            item = self.MENU_ITEMS[self.menu_index]
+
+        elif key in (
+            pygame.K_RETURN,
+            pygame.K_SPACE
+        ):
+
+            item = self.MENU_ITEMS[
+                self.menu_index
+            ]
+
             if item == "Play":
+
                 self.play("select")
+
                 self.start_game()
+
             elif item == "Quit":
+
                 self.quit()
+
             else:
+
                 self.change_setting(1)
 
     def change_setting(self, step):
+multiplayer
+
+        item = self.MENU_ITEMS[
+            self.menu_index
+        ]
+
+        if item == "Players":
+
+            # Toggle between 1 and 2
+            self.player_count = (
+                1
+                + (
+                    (
+                        self.player_count
+                        - 1
+                        + step
+                    ) % 2
+                )
+            )
+
+        elif item == "Difficulty":
+
+            self.difficulty_index = (
+                self.difficulty_index
+                + step
+            ) % len(
+                DIFFICULTY_NAMES
+            )
+
+
         """Change the highlighted menu setting (difficulty, theme or sound)."""
         item = self.MENU_ITEMS[self.menu_index]
         if item == "Difficulty":
             self.difficulty_index = (self.difficulty_index + step) % len(DIFFICULTY_NAMES)
         elif item == "Mode":
             self.mode_index = (self.mode_index + step) % len(GAME_MODES)
+main
         elif item == "Theme":
-            self.theme_index = (self.theme_index + step) % len(THEME_NAMES)
+
+            self.theme_index = (
+                self.theme_index
+                + step
+            ) % len(
+                THEME_NAMES
+            )
+
         elif item == "Sound":
+
             self.sound_on = not self.sound_on
+
         else:
+
             return
+
         self.play("select")
 
+    # ------------------------- Player Controls -----------------
+
     def handle_play_key(self, key):
+multiplayer
+
+        player_controls = [
+
+            # Player 1
+            {
+                pygame.K_w: UP,
+                pygame.K_s: DOWN,
+                pygame.K_a: LEFT,
+                pygame.K_d: RIGHT,
+            },
+
+            # Player 2
+            {
+                pygame.K_UP: UP,
+                pygame.K_DOWN: DOWN,
+                pygame.K_LEFT: LEFT,
+                pygame.K_RIGHT: RIGHT,
+            },
+        ]
+
+
+main
         if key == pygame.K_ESCAPE:
+
             self.state = "menu"
+
         elif key == pygame.K_p:
+
             self.paused = not self.paused
+multiplayer
+
+        elif not self.paused:
+
+            # Find the snake using player_id.
+            # This keeps controls correct even
+            # after one player dies.
+
+            for snake in self.snakes:
+
+                player_id = snake.player_id
+
+                if key in player_controls[
+                    player_id
+                ]:
+
+                    snake.set_direction(
+                        player_controls[
+                            player_id
+                        ][key]
+                    )
+
+                    break
+
+    # ------------------------- Game Over -----------------------
+
         elif not self.paused:
             direction = reverse_direction(key, self.reverse_controls)
             if direction is not None:
                 self.snake.set_direction(direction)
+main
 
     def handle_gameover_key(self, key):
+
         if key == pygame.K_r:
+
             self.start_game()
-        elif key in (pygame.K_m, pygame.K_ESCAPE):
+
+        elif key in (
+            pygame.K_m,
+            pygame.K_ESCAPE
+        ):
+
             self.state = "menu"
+
         elif key == pygame.K_q:
+
             self.quit()
 
-    # ---- game logic ----
+    # ------------------------- Game Logic ----------------------
+
     def update(self):
-        if self.state != "playing" or self.paused:
+
+        if (
+            self.state != "playing"
+            or self.paused
+        ):
+
             return
 
-        self.snake.move()
+        # Move all active snakes
+        for snake in self.snakes:
 
-        # Collisions
-        if self.snake.hit_wall() or self.snake.hit_self():
+            snake.move()
+
+        dead_players = set()
+
+        # Wall and self collisions
+        for i, snake in enumerate(
+            self.snakes
+        ):
+
+            if (
+                snake.hit_wall()
+                or snake.hit_self()
+            ):
+
+                dead_players.add(i)
+
+        # Snake vs snake collisions
+        for i, snake in enumerate(
+            self.snakes
+        ):
+
+            if i in dead_players:
+                continue
+
+            for j, other_snake in enumerate(
+                self.snakes
+            ):
+
+                if (
+                    i != j
+                    and snake.head
+                    in other_snake.body
+                ):
+
+                    dead_players.add(i)
+
+                    break
+
+        # Head-to-head collisions
+        head_positions = {}
+
+        for i, snake in enumerate(
+            self.snakes
+        ):
+
+            if snake.head not in head_positions:
+
+                head_positions[
+                    snake.head
+                ] = []
+
+            head_positions[
+                snake.head
+            ].append(i)
+
+        for players in head_positions.values():
+
+            if len(players) > 1:
+
+                for player in players:
+
+                    dead_players.add(
+                        player
+                    )
+
+        # Remove dead snakes
+        self.snakes = [
+            snake
+            for i, snake in enumerate(
+                self.snakes
+            )
+            if i not in dead_players
+        ]
+
+        # Everyone died
+        if not self.snakes:
+
+            self.winner = None
+
             self.end_game()
+
             return
+
+multiplayer
+        # One player remains
+        if (
+            self.player_count == 2
+            and len(self.snakes) == 1
+        ):
+
+            self.winner = (
+                self.snakes[0].player_id
+            )
+
+            self.end_game()
+
+            return
+
+        # Normal food
+        for snake in self.snakes:
+
+            if snake.head == self.food.pos:
+
+                self.eat(
+                    self.food,
+                    snake
+                )
+
+                self.foods_eaten += 1
+
+                self.level = (
+                    1
+                    + self.foods_eaten
+                    // FOODS_PER_LEVEL
+                )
+
+                self.food = Food(
+                    self.snakes,
+                    other=self.bonus_food
+                )
+
+                # Bonus food
+                if (
+                    self.foods_eaten
+                    % BONUS_EVERY == 0
+                    and self.bonus_food is None
+                ):
+
+                    self.bonus_food = Food(
+                        self.snakes,
+                        bonus=True,
+                        other=self.food
+                    )
+
+                break
+
+        # Bonus food
+        if self.bonus_food:
+
+            for snake in self.snakes:
+
+                if (
+                    snake.head
+                    == self.bonus_food.pos
+                ):
+
+                    self.eat(
+                        self.bonus_food,
+                        snake
+                    )
+
+                    self.bonus_food = None
+
+                    break
+
+        # Bonus timeout
+        if (
+            self.bonus_food
+            and self.bonus_food.expired()
+        ):
+
 
         # Eating normal food
         if self.snake.head == self.food.pos:
@@ -476,10 +1293,28 @@ class Game:
 
         # Bonus food and poison timeouts
         if self.bonus_food and self.bonus_food.expired():
+main
             self.bonus_food = None
         self.poison_foods = [p for p in self.poison_foods if not p.expired()]
 
-        self.popups = [p for p in self.popups if p.alive()]
+        # Remove old popups
+        self.popups = [
+            p
+            for p in self.popups
+            if p.alive()
+        ]
+
+    # ------------------------- Eating ---------------------------
+
+    def eat(self, food, snake):
+
+        self.scores[
+            snake.player_id
+        ] += food.points
+
+        snake.grow(1)
+
+multiplayer
 
     #Poison Feature
     def poison_positions(self):
@@ -520,52 +1355,217 @@ class Game:
     def eat(self, food):
         self.score += food.points
         self.snake.grow(1)
+main
         x, y = food.pos
-        px, py = x * CELL + CELL // 2, y * CELL + HUD_HEIGHT
-        colour = self.theme["bonus"] if food.bonus else self.theme["text"]
-        self.popups.append(Popup(f"+{food.points}", px, py, colour))
-        self.play("bonus" if food.bonus else "eat")
+
+        px = (
+            x * CELL
+            + CELL // 2
+        )
+
+        py = (
+            y * CELL
+            + HUD_HEIGHT
+        )
+
+        if food.bonus:
+
+            colour = self.theme["bonus"]
+
+        elif snake.color is not None:
+
+            colour = snake.color
+
+        else:
+
+            colour = self.theme["text"]
+
+        self.popups.append(
+            Popup(
+                f"+{food.points}",
+                px,
+                py,
+                colour
+            )
+        )
+
+        self.play(
+            "bonus"
+            if food.bonus
+            else "eat"
+        )
+
+    # ------------------------- End Game -------------------------
 
     def end_game(self):
-        self.state = "gameover"
-        self.play("gameover")
-        if self.score > self.high_scores[self.difficulty]:
-            self.high_scores[self.difficulty] = self.score
-            self.new_best = True
-            save_high_scores(self.high_scores)
 
-    # ---- drawing helpers ----
-    def draw_text(self, text, font, colour, center=None, topleft=None, topright=None):
-        surf = font.render(text, True, colour)
+        self.state = "gameover"
+
+        self.play("gameover")
+
+        # Save high score only for 1-player mode
+        if self.player_count == 1:
+
+            if (
+                self.scores[0]
+                > self.high_scores[
+                    self.difficulty
+                ]
+            ):
+
+                self.high_scores[
+                    self.difficulty
+                ] = self.scores[0]
+
+                self.new_best = True
+
+                save_high_scores(
+                    self.high_scores
+                )
+
+    # ------------------------- Drawing Helpers -----------------
+
+    def draw_text(
+        self,
+        text,
+        font,
+        colour,
+        center=None,
+        topleft=None,
+        topright=None
+    ):
+
+        surf = font.render(
+            text,
+            True,
+            colour
+        )
+
         rect = surf.get_rect()
+
         if center:
             rect.center = center
+
         if topleft:
             rect.topleft = topleft
+
         if topright:
             rect.topright = topright
-        self.screen.blit(surf, rect)
 
-    def draw_overlay(self, title, lines):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 170))
-        self.screen.blit(overlay, (0, 0))
+        self.screen.blit(
+            surf,
+            rect
+        )
+
+    def draw_overlay(
+        self,
+        title,
+        lines
+    ):
+
+        overlay = pygame.Surface(
+            (WIDTH, HEIGHT),
+            pygame.SRCALPHA
+        )
+
+        overlay.fill(
+            (0, 0, 0, 170)
+        )
+
+        self.screen.blit(
+            overlay,
+            (0, 0)
+        )
+
         t = self.theme
-        self.draw_text(title, self.big_font, t["text"], center=(WIDTH // 2, HEIGHT // 2 - 60))
-        for i, line in enumerate(lines):
-            self.draw_text(line, self.font, t["muted"], center=(WIDTH // 2, HEIGHT // 2 + i * 32))
 
-    # ---- drawing: game ----
+        self.draw_text(
+            title,
+            self.big_font,
+            t["text"],
+            center=(
+                WIDTH // 2,
+                HEIGHT // 2 - 60
+            )
+        )
+
+        for i, line in enumerate(
+            lines
+        ):
+
+            self.draw_text(
+                line,
+                self.font,
+                t["muted"],
+                center=(
+                    WIDTH // 2,
+                    HEIGHT // 2
+                    + i * 32
+                )
+            )
+
+    # ------------------------- Draw Game ------------------------
+
     def draw_game(self):
-        t = self.theme
-        self.screen.fill(t["bg"])
-        for x in range(0, WIDTH, CELL):
-            pygame.draw.line(self.screen, t["grid"], (x, HUD_HEIGHT), (x, HEIGHT))
-        for y in range(HUD_HEIGHT, HEIGHT, CELL):
-            pygame.draw.line(self.screen, t["grid"], (0, y), (WIDTH, y))
 
-        self.food.draw(self.screen, t)
+        t = self.theme
+
+        self.screen.fill(
+            t["bg"]
+        )
+
+        # Grid
+        for x in range(
+            0,
+            WIDTH,
+            CELL
+        ):
+
+            pygame.draw.line(
+                self.screen,
+                t["grid"],
+                (x, HUD_HEIGHT),
+                (x, HEIGHT)
+            )
+
+        for y in range(
+            HUD_HEIGHT,
+            HEIGHT,
+            CELL
+        ):
+
+            pygame.draw.line(
+                self.screen,
+                t["grid"],
+                (0, y),
+                (WIDTH, y)
+            )
+
+        # Food
+        self.food.draw(
+            self.screen,
+            t
+        )
+
         if self.bonus_food:
+multiplayer
+
+            self.bonus_food.draw(
+                self.screen,
+                t
+            )
+
+        # Snakes
+        for snake in self.snakes:
+
+            snake.draw(
+                self.screen,
+                t
+            )
+
+        # Popups
+        for p in self.popups:
+
             self.bonus_food.draw(self.screen, t)
         for poison in self.poison_foods:
             poison.draw(self.screen)
@@ -578,80 +1578,304 @@ class Game:
             flash = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             flash.fill((*POISON_COLOUR, 70))
             self.screen.blit(flash, (0, 0))
+main
 
+            p.draw(
+                self.screen,
+                self.small_font
+            )
 
         # HUD
-        pygame.draw.rect(self.screen, t["hud"], (0, 0, WIDTH, HUD_HEIGHT))
-        self.draw_text(f"Score: {self.score}", self.font, t["text"], topleft=(10, 8))
-        self.draw_text(f"{self.difficulty} - Lvl {self.level}", self.font, t["accent"],
-                       center=(WIDTH // 2, HUD_HEIGHT // 2))
-        self.draw_text(f"Best: {self.high_score}", self.font, t["muted"], topright=(WIDTH - 10, 8))
+        pygame.draw.rect(
+            self.screen,
+            t["hud"],
+            (
+                0,
+                0,
+                WIDTH,
+                HUD_HEIGHT
+            )
+        )
 
+        # Scores
+        score_text = "  ".join(
+            f"P{i + 1}: {self.scores[i]}"
+            for i in range(
+                self.player_count
+            )
+        )
+
+        self.draw_text(
+            score_text,
+            self.font,
+            t["text"],
+            topleft=(10, 8)
+        )
+
+        self.draw_text(
+            f"{self.difficulty} - Lvl {self.level}",
+            self.font,
+            t["accent"],
+            center=(
+                WIDTH // 2,
+                HUD_HEIGHT // 2
+            )
+        )
+
+        # High score only for single player
+        if self.player_count == 1:
+
+            self.draw_text(
+                f"Best: {self.high_score}",
+                self.font,
+                t["muted"],
+                topright=(
+                    WIDTH - 10,
+                    8
+                )
+            )
+
+        # Pause
         if self.paused:
-            self.draw_overlay("PAUSED", ["Press P to resume"])
+
+            self.draw_overlay(
+                "PAUSED",
+                [
+                    "Press P to resume"
+                ]
+            )
+
+        # Game over
         if self.state == "gameover":
-            lines = [f"Score: {self.score}"]
+
+            lines = [
+                "Final Scores:",
+                "  ".join(
+                    f"P{i + 1}: {self.scores[i]}"
+                    for i in range(
+                        self.player_count
+                    )
+                ),
+            ]
+
+            if self.player_count == 2:
+
+                if self.winner is not None:
+
+                    lines.insert(
+                        0,
+                        f"PLAYER {self.winner + 1} WINS!"
+                    )
+
+                else:
+
+                    lines.insert(
+                        0,
+                        "DRAW!"
+                    )
+
             if self.new_best:
-                lines.append("NEW HIGH SCORE!")
-            lines.append("R restart  |  M menu  |  Q quit")
-            self.draw_overlay("GAME OVER", lines)
 
-    # ---- drawing: menu ----
+                lines.append(
+                    "NEW HIGH SCORE!"
+                )
+
+            lines.append(
+                "R restart  |  M menu  |  Q quit"
+            )
+
+            self.draw_overlay(
+                "GAME OVER",
+                lines
+            )
+
+    # ------------------------- Draw Menu ------------------------
+
     def draw_menu(self):
+
         t = self.theme
-        self.screen.fill(t["bg"])
 
-        # Animated decorative snake wiggling under the title
+        self.screen.fill(
+            t["bg"]
+        )
+
+        # Animated decorative snake
         ticks = pygame.time.get_ticks()
-        for i in range(18):
-            x = WIDTH // 2 - 180 + i * 20
-            y = 175 + int(8 * math.sin(ticks / 250 + i * 0.5))
-            colour = lerp_colour(t["head"], t["tail"], i / 17)
-            pygame.draw.circle(self.screen, colour, (x, y), 8)
 
-        self.draw_text("SNAKE", self.title_font, t["head"], center=(WIDTH // 2, 100))
+        for i in range(18):
+
+            x = (
+                WIDTH // 2
+                - 180
+                + i * 20
+            )
+
+            y = (
+                175
+                + int(
+                    8
+                    * math.sin(
+                        ticks / 250
+                        + i * 0.5
+                    )
+                )
+            )
+
+            colour = lerp_colour(
+                t["head"],
+                t["tail"],
+                i / 17
+            )
+
+            pygame.draw.circle(
+                self.screen,
+                colour,
+                (x, y),
+                8
+            )
+
+        self.draw_text(
+            "SNAKE",
+            self.title_font,
+            t["head"],
+            center=(
+                WIDTH // 2,
+                100
+            )
+        )
 
         values = {
+multiplayer
+            "Players": (
+                f"< {self.player_count} >"
+            ),
+
+            "Difficulty": (
+                f"< {self.difficulty} >"
+            ),
+
+            "Theme": (
+                f"< {THEME_NAMES[self.theme_index]} >"
+            ),
+
+            "Sound": (
+                f"< {'On' if self.sound_on else 'Off'} >"
+            ),
+
             "Mode": f"< {self.game_mode} >",
             "Difficulty": f"< {self.difficulty} >",
             "Theme": f"< {THEME_NAMES[self.theme_index]} >",
             "Sound": f"< {'On' if self.sound_on else 'Off'} >",
+main
         }
-        for i, item in enumerate(self.MENU_ITEMS):
-            selected = i == self.menu_index
-            colour = t["accent"] if selected else t["text"]
-            label = f"> {item}" if selected else item
-            y = 235 + i * 36
-            self.draw_text(label, self.font, colour, topleft=(WIDTH // 2 - 130, y))
-            if item in values:
-                self.draw_text(values[item], self.font, colour, topright=(WIDTH // 2 + 150, y))
 
-        self.draw_text(f"High score ({self.difficulty}): {self.high_score}",
-                       self.small_font, t["muted"], center=(WIDTH // 2, HEIGHT - 50))
-        self.draw_text("UP/DOWN select   LEFT/RIGHT change   ENTER confirm",
-                       self.small_font, t["muted"], center=(WIDTH // 2, HEIGHT - 26))
+        for i, item in enumerate(
+            self.MENU_ITEMS
+        ):
+
+            selected = (
+                i == self.menu_index
+            )
+
+            colour = (
+                t["accent"]
+                if selected
+                else t["text"]
+            )
+
+            label = (
+                f"> {item}"
+                if selected
+                else item
+            )
+
+            y = 235 + i * 36
+
+            self.draw_text(
+                label,
+                self.font,
+                colour,
+                topleft=(
+                    WIDTH // 2 - 130,
+                    y
+                )
+            )
+
+            if item in values:
+
+                self.draw_text(
+                    values[item],
+                    self.font,
+                    colour,
+                    topright=(
+                        WIDTH // 2 + 150,
+                        y
+                    )
+                )
+
+        self.draw_text(
+            f"High score ({self.difficulty}): {self.high_score}",
+            self.small_font,
+            t["muted"],
+            center=(
+                WIDTH // 2,
+                HEIGHT - 50
+            )
+        )
+
+        self.draw_text(
+            "UP/DOWN select   LEFT/RIGHT change   ENTER confirm",
+            self.small_font,
+            t["muted"],
+            center=(
+                WIDTH // 2,
+                HEIGHT - 26
+            )
+        )
+
+    # ------------------------- Main Drawing --------------------
 
     def draw(self):
+
         if self.state == "menu":
+
             self.draw_menu()
+
         else:
+
             self.draw_game()
+
         pygame.display.flip()
 
-    # ---- main loop ----
+    # ------------------------- Main Loop -----------------------
+
     def run(self):
+
         while True:
+
             self.handle_events()
+
             self.update()
+
             self.draw()
-            # Menu runs at a steady 30 FPS; game speed depends on level
-            self.clock.tick(30 if self.state == "menu" else self.fps)
+
+            self.clock.tick(
+                30
+                if self.state == "menu"
+                else self.fps
+            )
+
+    # ------------------------- Quit -----------------------------
 
     @staticmethod
     def quit():
+
         pygame.quit()
+
         sys.exit()
 
+
+# ----------------------------- Start Game ------------------------------------
 
 if __name__ == "__main__":
     Game().run()
