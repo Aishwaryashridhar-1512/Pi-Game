@@ -25,7 +25,10 @@ import random
 import sys
 from array import array
 
+# pyrefly: ignore [missing-import]
 import pygame
+
+from modes.reverse import reverse_direction
 
 # ----------------------------- Settings ------------------------------------
 CELL = 20                      # size of one grid cell in pixels
@@ -47,6 +50,8 @@ DIFFICULTIES = {
     "Hard":   {"base_fps": 11, "step": 2},
 }
 DIFFICULTY_NAMES = list(DIFFICULTIES.keys())
+
+GAME_MODES = ["Classic", "Reverse"]
 
 # Colour themes
 THEMES = {
@@ -230,7 +235,7 @@ class Popup:
 
 # ----------------------------- Main game class -----------------------------
 class Game:
-    MENU_ITEMS = ["Play", "Difficulty", "Theme", "Sound", "Quit"]
+    MENU_ITEMS = ["Play", "Mode", "Difficulty", "Theme", "Sound", "Quit"]
 
     def __init__(self):
         pygame.mixer.pre_init(22050, -16, 1, 512)
@@ -242,7 +247,7 @@ class Game:
         self.small_font = pygame.font.SysFont("consolas", 16)
         self.big_font = pygame.font.SysFont("consolas", 52, bold=True)
         self.title_font = pygame.font.SysFont("consolas", 80, bold=True)
-
+        self.mode_index = 0
         self.sounds = self._load_sounds()
 
         # Settings chosen from the menu
@@ -253,12 +258,17 @@ class Game:
         self.high_scores = load_high_scores()
         self.state = "menu"           # "menu", "playing", "gameover"
         self.menu_index = 0
+        
         self.reset()
 
     # ---- settings shortcuts ----
     @property
     def difficulty(self):
         return DIFFICULTY_NAMES[self.difficulty_index]
+
+    @property
+    def game_mode(self):
+        return GAME_MODES[self.mode_index]
 
     @property
     def theme(self):
@@ -298,6 +308,7 @@ class Game:
         self.level = 1
         self.paused = False
         self.new_best = False
+        self.reverse_controls = False
 
     def start_game(self):
         self.reset()
@@ -352,6 +363,8 @@ class Game:
         item = self.MENU_ITEMS[self.menu_index]
         if item == "Difficulty":
             self.difficulty_index = (self.difficulty_index + step) % len(DIFFICULTY_NAMES)
+        elif item == "Mode":
+            self.mode_index = (self.mode_index + step) % len(GAME_MODES)
         elif item == "Theme":
             self.theme_index = (self.theme_index + step) % len(THEME_NAMES)
         elif item == "Sound":
@@ -361,18 +374,14 @@ class Game:
         self.play("select")
 
     def handle_play_key(self, key):
-        key_map = {
-            pygame.K_UP: UP, pygame.K_w: UP,
-            pygame.K_DOWN: DOWN, pygame.K_s: DOWN,
-            pygame.K_LEFT: LEFT, pygame.K_a: LEFT,
-            pygame.K_RIGHT: RIGHT, pygame.K_d: RIGHT,
-        }
         if key == pygame.K_ESCAPE:
             self.state = "menu"
         elif key == pygame.K_p:
             self.paused = not self.paused
-        elif key in key_map and not self.paused:
-            self.snake.set_direction(key_map[key])
+        elif not self.paused:
+            direction = reverse_direction(key, self.reverse_controls)
+            if direction is not None:
+                self.snake.set_direction(direction)
 
     def handle_gameover_key(self, key):
         if key == pygame.K_r:
@@ -397,6 +406,10 @@ class Game:
         # Eating normal food
         if self.snake.head == self.food.pos:
             self.eat(self.food)
+
+            if self.game_mode == "Reverse":
+                self.reverse_controls = not self.reverse_controls
+
             self.foods_eaten += 1
             self.level = 1 + self.foods_eaten // FOODS_PER_LEVEL
             self.food = Food(self.snake.body, other=self.bonus_food)
@@ -500,6 +513,7 @@ class Game:
         self.draw_text("SNAKE", self.title_font, t["head"], center=(WIDTH // 2, 100))
 
         values = {
+            "Mode": f"< {self.game_mode} >",
             "Difficulty": f"< {self.difficulty} >",
             "Theme": f"< {THEME_NAMES[self.theme_index]} >",
             "Sound": f"< {'On' if self.sound_on else 'Off'} >",
