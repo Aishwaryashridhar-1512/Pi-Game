@@ -40,6 +40,16 @@ BONUS_DURATION_MS = 5000       # bonus food lifetime
 MAX_FPS = 28                   # speed cap for every difficulty
 SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "highscores.json")
 
+#Poison feature settings
+POISON_EVERY = 3
+POISON_DURATION_MS = 8000
+POISON_PENALTY = 2
+POISON_SHRINK = 2
+MIN_SNAKE_LENGTH = 3
+MAX_POISON_ON_SCREEN = 2
+POISON_COLOUR = (170, 70, 220) #Purple
+SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "highscores.json")
+
 # Difficulty: starting speed and how much speed rises per level
 DIFFICULTIES = {
     "Easy":   {"base_fps": 6,  "step": 1},
@@ -208,6 +218,35 @@ class Food:
         else:
             pygame.draw.ellipse(surface, colour, rect.inflate(-4, -4))
 
+class PoisonFood:
+    """Poison item: purple, flickers, disappears after a few seconds.
+    Eating it shrinks the snake and costs points."""
+ 
+    def __init__(self, snake_body, avoid_positions):
+        self.spawn_time = pygame.time.get_ticks()
+        blocked = set(snake_body) | set(avoid_positions)
+        # Also keep poison away from the cells right in front of the head,
+        # so the player gets a fair chance to react.
+        hx, hy = snake_body[0]
+        free = [(x, y) for x in range(COLS) for y in range(ROWS)
+                if (x, y) not in blocked and abs(x - hx) + abs(y - hy) > 3]
+        self.pos = random.choice(free)
+ 
+    def expired(self):
+        return pygame.time.get_ticks() - self.spawn_time > POISON_DURATION_MS
+ 
+    def draw(self, surface):
+        age = pygame.time.get_ticks() - self.spawn_time
+        # Flicker faster in the last 2 seconds as a warning that it will vanish
+        if age > POISON_DURATION_MS - 2000 and (age // 150) % 2 == 0:
+            return
+        x, y = self.pos
+        rect = pygame.Rect(x * CELL, y * CELL + HUD_HEIGHT, CELL, CELL)
+        pygame.draw.ellipse(surface, POISON_COLOUR, rect.inflate(-4, -4))
+        # A small "X" in the middle so it is easy to tell apart from normal food
+        c = rect.center
+        pygame.draw.line(surface, (255, 255, 255), (c[0] - 3, c[1] - 3), (c[0] + 3, c[1] + 3), 2)
+        pygame.draw.line(surface, (255, 255, 255), (c[0] - 3, c[1] + 3), (c[0] + 3, c[1] - 3), 2)
 
 class Popup:
     """A floating '+points' text that rises and fades out."""
@@ -278,6 +317,7 @@ class Game:
                 "eat": make_tone(600, 1000, 110),
                 "bonus": make_tone(800, 1600, 260),
                 "gameover": make_tone(400, 90, 600, 0.45),
+                "poison": make_tone(350, 110, 320, 0.4),
             }
         except pygame.error:
             return {}
@@ -290,6 +330,8 @@ class Game:
     def reset(self):
         """Start (or restart) a fresh game with the current settings."""
         self.snake = Snake()
+        self.poison_foods = []
+        self.flash_until = 0 
         self.food = Food(self.snake.body)
         self.bonus_food = None
         self.popups = []
@@ -399,20 +441,68 @@ class Game:
             self.eat(self.food)
             self.foods_eaten += 1
             self.level = 1 + self.foods_eaten // FOODS_PER_LEVEL
-            self.food = Food(self.snake.body, other=self.bonus_food)
+            self.food = self.spawn_food(other=self.bonus_food)
             if self.foods_eaten % BONUS_EVERY == 0 and self.bonus_food is None:
-                self.bonus_food = Food(self.snake.body, bonus=True, other=self.food)
+                self.bonus_food = self.spawn_food(bonus=True, other=self.food)
+            if (self.foods_eaten % POISON_EVERY == 0
+                    and len(self.poison_foods) < MAX_POISON_ON_SCREEN):
+                self.spawn_poison()
 
         # Eating bonus food
         if self.bonus_food and self.snake.head == self.bonus_food.pos:
             self.eat(self.bonus_food)
             self.bonus_food = None
 
-        # Bonus food timeout
+        #Eating poison
+        for poison in list(self.poison_foods):
+            if self.snake.head == poison.pos:
+                self.poison_foods.remove(poison)
+                self.eat_poison(poison)
+                if self.state == "gameover":
+                    return
+
+        # Bonus food and poison timeouts
         if self.bonus_food and self.bonus_food.expired():
             self.bonus_food = None
+        self.poison_foods = [p for p in self.poison_foods if not p.expired()]
 
         self.popups = [p for p in self.popups if p.alive()]
+
+    #Poison Feature
+    def poison_positions(self):
+        return [p.pos for p in self.poison_foods]
+ 
+    def spawn_food(self, bonus=False, other=None):
+        """Create food that never lands on a poison item."""
+        food = Food(self.snake.body, bonus=bonus, other=other)
+        for _ in range(50):
+            if food.pos not in self.poison_positions():
+                break
+            food = Food(self.snake.body, bonus=bonus, other=other)
+        return food
+ 
+    def spawn_poison(self):
+        """Create a poison item away from the snake, food and other poison."""
+        avoid = self.poison_positions() + [self.food.pos]
+        if self.bonus_food:
+            avoid.append(self.bonus_food.pos)
+        self.poison_foods.append(PoisonFood(self.snake.body, avoid))
+ 
+    def eat_poison(self, poison):
+        """Penalty: lose points and tail segments. Too short -> game over."""
+        x, y = poison.pos
+        self.popups.append(Popup(f"-{POISON_PENALTY}", x * CELL + CELL // 2,
+                                 y * CELL + HUD_HEIGHT, POISON_COLOUR))
+        self.play("poison")
+        self.flash_until = pygame.time.get_ticks() + 250
+ 
+        if len(self.snake.body) - POISON_SHRINK < MIN_SNAKE_LENGTH:
+            self.end_game()                  # the snake is too short to survive
+            return
+        self.score = max(0, self.score - POISON_PENALTY)
+        for _ in range(POISON_SHRINK):
+            self.snake.body.pop()            # remove tail segments
+        self.snake.grow_pending = 0
 
     def eat(self, food):
         self.score += food.points
@@ -464,9 +554,18 @@ class Game:
         self.food.draw(self.screen, t)
         if self.bonus_food:
             self.bonus_food.draw(self.screen, t)
+        for poison in self.poison_foods:
+            poison.draw(self.screen)
         self.snake.draw(self.screen, t)
         for p in self.popups:
             p.draw(self.screen, self.small_font)
+ 
+        # Brief purple flash when poison is eaten
+        if pygame.time.get_ticks() < self.flash_until:
+            flash = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            flash.fill((*POISON_COLOUR, 70))
+            self.screen.blit(flash, (0, 0))
+
 
         # HUD
         pygame.draw.rect(self.screen, t["hud"], (0, 0, WIDTH, HUD_HEIGHT))
